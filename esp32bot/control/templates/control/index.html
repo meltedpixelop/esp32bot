@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Robot</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body{
+      color: white;
+      font-family: monospace;
+    }
+    .button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .status {
+      margin: 20px 0;
+      font-size: 18px;
+    }
+    #esp32-ip {
+      padding: 10px;
+      font-size: 16px;
+    }
+    #records{
+      background-color:rgb(68, 68, 68);
+      color:white;
+      border-radius: 5px;
+      overflow:auto;
+      position: absolute;
+      height: 100%;
+      width: 100%;
+      min-height: 500px;
+    }
+    .recordsData{
+      color:white;
+      border-bottom: 1px solid rgb(148, 148, 148);
+      padding: 5px;
+    }
+    td{
+      height: 120px;
+      width: 120px;
+      padding: 5px;
+    }
+   
+   .btn-ctr{
+    width: 100%;
+    height: 100%;
+    margin: 0px;
+   }
+  
+    
+  </style>
+</head>
+<body class=" mx-auto bg-secondary" onload="readRecords()" >
+<div class=" bg-dark  container-fluid p-4">
+ <div class="form-group row">
+  <div class="col-md-4">
+    <h1>Control</h1>
+  </div>
+  <div class="col-md-5">
+    <input disabled type="text" id="esp32-ip" class="form-control" placeholder="IP address not set">
+  </div>
+</div>
+</div>
+<div class="row container-fluid mx-auto">
+  <div class=" col-md-7 mx-auto container-fluid">
+    <div class="row">
+      <button disabled class="btn btn-danger button btn-str" onclick="startBtn()">start</button>
+      <div class="status text-center" id="connection-status">ESP32 Status: disconnected</div>
+    </div>
+    <div id="records" class="text-center bg-dark"> </div>
+    </div>
+  <div class="col-md-5 d-flex justify-content-center p-4" >
+    <div>
+      <input disabled type="text" id="response" class="form-control">
+        <table hidden style="border-radius:100px" class=" text-center m-4 table-ctr btn-light">
+          <tr>
+            <td >
+              <button style="border-radius: 100px 0px 0px 0px;" class="btn btn-dark button btn-ctr"  onmouseover="handleButtonEvent([26], 'high')()" onmouseout="handleButtonEvent([26, 25, 32, 33], 'low')()">&#8598;</button>
+            </td>
+            <td>
+              <button  class="btn btn-light button btn-ctr"  onmouseover="handleButtonEvent([26, 32], 'high')()" onmouseout="handleButtonEvent([26, 25, 32, 33], 'low')()">&#8593;</button>
+            </td>
+            <td>
+              <button  style="border-radius: 0px 100px 0px 0px;" class="btn btn-dark button btn-ctr"  onmouseover="handleButtonEvent([32], 'high')()" onmouseout="handleButtonEvent([26, 25, 32, 33], 'low')()">&#8599;</button>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <button  class="btn btn-light button btn-ctr"  onmouseover="handleButtonEvent([26 ,33], 'high')()" onmouseout="handleButtonEvent([26, 25, 32, 33], 'low')()">&#8592;</button>
+            </td>
+            <td >
+              <div style="border-radius:100px" class="btn btn-dark button btn-ctr"  ></div>
+            </td>
+            <td>
+              <button  class="btn btn-light button btn-ctr"  onmouseover="handleButtonEvent([25, 32], 'high')()" onmouseout="handleButtonEvent([26, 25, 32, 33], 'low')()">&#8594;</button>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <button  style="border-radius: 0px 0px 0px 100px;" class="btn btn-dark button btn-ctr"  onmouseover="handleButtonEvent([25], 'high')()" onmouseout="handleButtonEvent([26, 25, 32, 33], 'low')()">&#8601;</button>
+            </td>
+            <td><button  class="btn btn-light button btn-ctr"  onmouseover="handleButtonEvent([25, 33], 'high')()" onmouseout="handleButtonEvent([26, 25, 32, 33], 'low')()">&#8595;</button>
+            </td>
+            <td>
+              <button  style="border-radius: 0px 0px 100px 0px;" class="btn btn-dark button btn-ctr"  onmouseover="handleButtonEvent([33], 'high')()" onmouseout="handleButtonEvent([26, 25, 32, 33], 'low')()">&#8600;</button>
+            </td>
+          </tr>
+        </table>
+    </div>
+  </div>
+</div>
+    {% csrf_token %}
+  <!-- Bootstrap JS, Popper.js, and jQuery -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+  <script>
+    let esp32Ip = '';
+    function setIpAddress() {
+      esp32Ip = document.getElementById('esp32-ip').value;
+      if (!esp32Ip) {
+        alert('Please set the ESP32 IP address first.');
+      }
+      else{
+       
+      }
+    }
+
+    function startBtn(){
+      $('.table-ctr').removeAttr('hidden');
+      $('.btn-str').attr('hidden','hidden');
+      createRecord();
+
+    }
+
+    function createRecord() {
+      const data = { ip_address: esp32Ip };
+      fetch('/control/create/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(data)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          alert('Record saved successfully');
+          readRecords();
+        } else {
+          alert('Error saving record');
+        }
+      })
+      .catch(error => console.error('Error:', error));
+      readRecords();
+    }
+
+    function readRecords() {
+      fetch('/control/read/')
+        .then(response => response.json())
+        .then(data => {
+          const recordsDiv = document.getElementById('records');
+          recordsDiv.innerHTML = '';
+          data.forEach(record => {
+            const recordElement = document.createElement('div');
+            recordElement.textContent = `ID: ${record.id}, IP: ${record.ip_address}, Timestamp: ${record.timestamp}`;
+            recordsDiv.appendChild(recordElement);
+            recordElement.classList.add("recordsData");
+          });
+        })
+        .catch(error => console.error('Error:', error));
+         checkConnection() ;
+    }
+
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+  // ////////////////////////////////////////////////
+        function sendPinCommand(pins, state) {
+            var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.setRequestHeader('X-CSRFToken', csrfToken);
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4) {
+                    var response = JSON.parse(xhr.responseText);
+                    document.getElementById('response').value = response.message;
+                    if (xhr.status == 200) {
+                        console.log(response.message);
+                    } else {
+                        console.error(response.message);
+                    }
+                }
+            };
+
+            var data = 'state=' + state;
+            pins.forEach(function(pin) {
+                data += '&pins[]=' + pin;
+            });
+
+            xhr.send(data);
+        }
+
+        function handleButtonEvent(pins, state) {
+            return function() {
+                sendPinCommand(pins, state);
+            };
+        }
+
+        function checkConnection() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'check-connection/', true);
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    document.getElementById('connection-status').innerText = response.message;
+                    document.getElementById('esp32-ip').value = response.ipaddr;
+                    setIpAddress();
+                    if (response.status=="connected"){
+                      $('.btn-str').removeAttr('disabled');
+                      $(".btn-str").removeClass("btn-danger");
+                      $(".btn-str").addClass("btn-success");
+                    }
+                    else{
+                      $('.table-ctr').attr('hidden','hidden');
+                      $('.btn-str').attr('disabled','disabled')
+                      $(".btn-str").removeClass("btn-success");
+                      $(".btn-str").addClass("btn-danger");
+                      $('.btn-str').removeAttr('hidden');
+                    }
+                }
+            };
+
+            xhr.send();
+        }
+        setInterval(checkConnection, 5000); // Check connection every 5 seconds
+    </script>
+</body>
+</html>
